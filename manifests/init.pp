@@ -21,11 +21,11 @@
 #     Defaults to False.
 #   [catalog_type] Type of catalog that keystone uses to store endpoints,services. Optional.
 #     Defaults to sql. (Also accepts template)
-#   [token_format] Format keystone uses for tokens. Optional. Defaults to UUID.
+#   [token_format] Format keystone uses for tokens. Optional. Defaults to PKI.
 #     Supports PKI and UUID.
 #   [cache_dir] Directory created when token_format is PKI. Optional.
 #     Defaults to /var/cache/keystone.
-#   [enalbles] If the keystone services should be enabled. Optioal. Default to true.
+#   [enabled] If the keystone services should be enabled. Optioal. Default to true.
 #   [sql_conneciton] Url used to connect to database.
 #   [idle_timeout] Timeout when db connections should be reaped.
 #
@@ -54,11 +54,11 @@ class keystone(
   $public_port    = '5000',
   $admin_port     = '35357',
   $compute_port   = '8774',
-  $verbose        = 'False',
-  $debug          = 'False',
-  $use_syslog     = 'False',
+  $verbose        = false,
+  $debug          = false,
+  $use_syslog     = false,
   $catalog_type   = 'sql',
-  $token_format   = 'UUID',
+  $token_format   = 'PKI',
   $cache_dir      = '/var/cache/keystone',
   $enabled        = true,
   $sql_connection = 'sqlite:////var/lib/keystone/keystone.db',
@@ -70,9 +70,10 @@ class keystone(
 
   File['/etc/keystone/keystone.conf'] -> Keystone_config<||> ~> Service['keystone']
   Keystone_config<||> ~> Exec<| title == 'keystone-manage db_sync'|>
+  Keystone_config<||> ~> Exec<| title == 'keystone-manage pki_setup'|>
 
   # TODO implement syslog features
-  if ( $use_syslog != 'False') {
+  if ( $use_syslog != false) {
     fail('use syslog currently only accepts false')
   }
 
@@ -82,7 +83,6 @@ class keystone(
     ensure  => present,
     owner   => 'keystone',
     group   => 'keystone',
-    mode    => '0644',
     require => Package['keystone'],
     notify  => Service['keystone'],
   }
@@ -107,6 +107,7 @@ class keystone(
 
   file { ['/etc/keystone', '/var/log/keystone', '/var/lib/keystone']:
     ensure  => directory,
+    mode    => '0750',
   }
 
   file { '/etc/keystone/keystone.conf':
@@ -159,8 +160,14 @@ class keystone(
     file { $cache_dir:
       ensure => directory,
     }
-    exec { '/usr/bin/keystone-manage pki_setup':
-      creates => '/etc/keystone/ssl/private/signing_key.pem'
+    exec { 'keystone-manage pki_setup':
+      path        => '/usr/bin',
+      user        => 'keystone',
+      refreshonly => true,
+      creates     => '/etc/keystone/ssl/private/signing_key.pem',
+      notify      => Service['keystone'],
+      subscribe   => Package['keystone'],
+      require     => User['keystone'],
     }
   }
 
@@ -184,9 +191,11 @@ class keystone(
     # created
     exec { 'keystone-manage db_sync':
       path        => '/usr/bin',
+      user        => 'keystone',
       refreshonly => true,
       notify      => Service['keystone'],
       subscribe   => Package['keystone'],
+      require     => User['keystone'],
     }
   }
 }

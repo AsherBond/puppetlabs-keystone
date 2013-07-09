@@ -14,11 +14,11 @@ describe 'keystone' do
       'admin_port'      => '35357',
       'admin_token'     => 'service_token',
       'compute_port'    => '8774',
-      'verbose'         => 'False',
-      'debug'           => 'False',
-      'use_syslog'      => 'False',
+      'verbose'         => false,
+      'debug'           => false,
+      'use_syslog'      => false,
       'catalog_type'    => 'sql',
-      'token_format'    => 'UUID',
+      'token_format'    => 'PKI',
       'cache_dir'       => '/var/cache/keystone',
       'enabled'         => true,
       'sql_connection'  => 'sqlite:////var/lib/keystone/keystone.db',
@@ -34,10 +34,10 @@ describe 'keystone' do
       'admin_port'      => '35358',
       'admin_token'     => 'service_token_override',
       'compute_port'    => '8778',
-      'verbose'         => 'True',
-      'debug'           => 'True',
+      'verbose'         => true,
+      'debug'           => true,
       'catalog_type'    => 'template',
-      'token_format'    => 'PKI',
+      'token_format'    => 'UUID',
       'enabled'         => false,
       'sql_connection'  => 'mysql://a:b@c/d',
       'idle_timeout'    => '300'
@@ -61,12 +61,12 @@ describe 'keystone' do
 
       it { should contain_group('keystone').with(
           'ensure' => 'present',
-          'system' => 'true'
+          'system' => true
       ) }
       it { should contain_user('keystone').with(
         'ensure' => 'present',
         'gid'    => 'keystone',
-        'system' => 'true'
+        'system' => true
       ) }
 
       it 'should contain the expected directories' do
@@ -75,7 +75,7 @@ describe 'keystone' do
             'ensure'     => 'directory',
             'owner'      => 'keystone',
             'group'      => 'keystone',
-            'mode'       => '0644',
+            'mode'       => '0750',
             'require'    => 'Package[keystone]'
           )
         end
@@ -84,16 +84,18 @@ describe 'keystone' do
       it { should contain_service('keystone').with(
         'ensure'     => param_hash['enabled'] ? 'running' : 'stopped',
         'enable'     => param_hash['enabled'],
-        'hasstatus'  => 'true',
-        'hasrestart' => 'true'
+        'hasstatus'  => true,
+        'hasrestart' => true
       ) }
 
       it 'should only migrate the db if $enabled is true' do
-        if param_hash[:enabled]
+        if param_hash['enabled']
           should contain_exec('keystone-manage db_sync').with(
+            :user        => 'keystone',
             :refreshonly => true,
             :notify      => 'Service[keystone]',
-            :subscribe   => ['Package[keystone]', 'Concat[/etc/keystone/keystone.conf]']
+            :subscribe   => 'Package[keystone]',
+            :require     => 'User[keystone]'
           )
         end
       end
@@ -130,7 +132,7 @@ describe 'keystone' do
           'token_format' => 'UUID'
         }
       end
-      it { should_not contain_exec('/usr/bin/keystone-manage pki_setup') }
+      it { should_not contain_exec('keystone-manage pki_setup') }
     end
     describe 'when configuring as PKI' do
       let :params do
@@ -139,7 +141,7 @@ describe 'keystone' do
           'token_format' => 'PKI'
         }
       end
-      it { should contain_exec('/usr/bin/keystone-manage pki_setup').with(
+      it { should contain_exec('keystone-manage pki_setup').with(
         :creates => '/etc/keystone/ssl/private/signing_key.pem'
       ) }
       it { should contain_file('/var/cache/keystone').with_ensure('directory') }

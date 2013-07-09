@@ -73,15 +73,15 @@ describe Puppet::Provider::Keystone do
       klass.get_admin_endpoint.should == 'http://127.0.0.1:35357/v2.0/'
     end
 
-    describe 'when testing keystone connection retires' do
+    describe 'when testing keystone connection retries' do
 
-      ['[Errno 111] Connection refused', '(HTTP 400)'].reverse.each do |valid_message|
+      ['[Errno 111] Connection refused', '(HTTP 400)', 'HTTP Unable to establish connection'].reverse.each do |valid_message|
         it "should retry when keystone is not ready with error #{valid_message}" do
           mock = {'DEFAULT' => {'admin_token' => 'foo'}}
           Puppet::Util::IniConfig::File.expects(:new).returns(mock)
           mock.expects(:read).with('/etc/keystone/keystone.conf')
           klass.expects(:sleep).with(10).returns(nil)
-          klass.expects(:keystone).twice.with('--token', 'foo', '--endpoint', 'http://127.0.0.1:35357/v2.0/', ['test_retries']).raises(Exception, valid_message).then.returns('')
+          klass.expects(:keystone).twice.with('--endpoint', 'http://127.0.0.1:35357/v2.0/', ['test_retries']).raises(Exception, valid_message).then.returns('')
           klass.auth_keystone('test_retries')
         end
       end
@@ -97,8 +97,6 @@ describe Puppet::Provider::Keystone do
       klass.expects(
         :keystone
       ).with(
-        '--token',
-        'foo',
         '--endpoint',
         'http://127.0.0.1:35357/v2.0/',
         ['test_retries']
