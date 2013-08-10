@@ -167,6 +167,14 @@ Contributors
 
 Release Notes
 -------------
+**2.1.0**
+
+* Tracks release of puppet-quantum
+* Fixed allowed_hosts contitional statement
+* Pinned depedencies
+* Select keystone endpoint based on SSL setting
+* Improved tenant_hash usage in keystone_tenant
+* Various cleanup and bug fixes.
 
 **2.0.0**
 
@@ -175,5 +183,8 @@ Release Notes
 * service tenant name now configurable.
 * keystone_user is now idempotent.
 * Various cleanups and bug fixes.
+<<<<<<< HEAD
 * 
 >>>>>>> d7e6bc3c82348ecd2e4dcedb5c79ccfeb76afa6d
+=======
+>>>>>>> f3d5cbaf3bf230bf6163fcb1c0e9c60a140f37a5
