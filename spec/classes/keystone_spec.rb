@@ -16,9 +16,9 @@ describe 'keystone' do
       'compute_port'    => '8774',
       'verbose'         => false,
       'debug'           => false,
-      'use_syslog'      => false,
       'catalog_type'    => 'sql',
       'token_format'    => 'PKI',
+      'token_driver'    => 'keystone.token.backends.sql.Token',
       'cache_dir'       => '/var/cache/keystone',
       'enabled'         => true,
       'sql_connection'  => 'sqlite:////var/lib/keystone/keystone.db',
@@ -38,6 +38,7 @@ describe 'keystone' do
       'debug'           => true,
       'catalog_type'    => 'template',
       'token_format'    => 'UUID',
+      'token_driver'    => 'keystone.token.backends.kvs.Token',
       'enabled'         => false,
       'sql_connection'  => 'mysql://a:b@c/d',
       'idle_timeout'    => '300'
@@ -122,6 +123,10 @@ describe 'keystone' do
       it { should contain_keystone_config('signing/token_format').with_value(
         param_hash['token_format']
       ) }
+
+      it 'should contain correct token driver' do
+        should contain_keystone_config('token/driver').with_value(param_hash['token_driver'])
+      end
     end
   end
   describe 'when configuring signing token format' do
@@ -157,4 +162,37 @@ describe 'keystone' do
       end
     end
   end
+
+  describe 'with syslog disabled by default' do
+    let :params do
+      default_params
+    end
+
+    it { should contain_keystone_config('DEFAULT/use_syslog').with_value(false) }
+    it { should_not contain_keystone_config('DEFAULT/syslog_log_facility') }
+  end
+
+  describe 'with syslog enabled' do
+    let :params do
+      default_params.merge({
+        :use_syslog   => 'true',
+      })
+    end
+
+    it { should contain_keystone_config('DEFAULT/use_syslog').with_value(true) }
+    it { should contain_keystone_config('DEFAULT/syslog_log_facility').with_value('LOG_USER') }
+  end
+
+  describe 'with syslog enabled and custom settings' do
+    let :params do
+      default_params.merge({
+        :use_syslog   => 'true',
+        :log_facility => 'LOG_LOCAL0'
+     })
+    end
+
+    it { should contain_keystone_config('DEFAULT/use_syslog').with_value(true) }
+    it { should contain_keystone_config('DEFAULT/syslog_log_facility').with_value('LOG_LOCAL0') }
+  end
+
 end
