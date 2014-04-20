@@ -118,7 +118,7 @@ describe 'keystone' do
           should contain_exec('keystone-manage db_sync').with(
             :user        => 'keystone',
             :refreshonly => true,
-            :subscribe   => ['Package[keystone]', 'Keystone_config[sql/connection]'],
+            :subscribe   => ['Package[keystone]', 'Keystone_config[database/connection]'],
             :require     => 'User[keystone]'
           )
         end
@@ -143,8 +143,8 @@ describe 'keystone' do
       end
 
       it 'should contain correct mysql config' do
-        should contain_keystone_config('sql/idle_timeout').with_value(param_hash['idle_timeout'])
-        should contain_keystone_config('sql/connection').with_value(param_hash['sql_connection']).with_secret(true)
+        should contain_keystone_config('database/idle_timeout').with_value(param_hash['idle_timeout'])
+        should contain_keystone_config('database/connection').with_value(param_hash['sql_connection']).with_secret(true)
       end
 
       it { should contain_keystone_config('token/provider').with_value(
@@ -461,4 +461,36 @@ describe 'keystone' do
     it { should contain_keystone_config('DEFAULT/control_exchange').with_value('keystone') }
   end
 
+  describe 'setting sql (default) catalog' do
+    let :params do
+      default_params
+    end
+
+    it { should contain_keystone_config('catalog/driver').with_value('keystone.catalog.backends.sql.Catalog') }
+  end
+
+  describe 'setting default template catalog' do
+    let :params do
+      {
+        :admin_token    => 'service_token',
+        :catalog_type   => 'template'
+      }
+    end
+
+    it { should contain_keystone_config('catalog/driver').with_value('keystone.catalog.backends.templated.TemplatedCatalog') }
+    it { should contain_keystone_config('catalog/template_file').with_value('/etc/keystone/default_catalog.templates') }
+  end
+
+  describe 'setting another template catalog' do
+    let :params do
+      {
+        :admin_token            => 'service_token',
+        :catalog_type           => 'template',
+        :catalog_template_file  => '/some/template_file'
+      }
+    end
+
+    it { should contain_keystone_config('catalog/driver').with_value('keystone.catalog.backends.templated.TemplatedCatalog') }
+    it { should contain_keystone_config('catalog/template_file').with_value('/some/template_file') }
+  end
 end
